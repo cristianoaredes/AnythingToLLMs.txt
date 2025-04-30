@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mermaid Diagram Validator</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .diagram-container {
+            margin-bottom: 30px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        h2 {
+            margin-top: 0;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mermaid Diagram Validator</h1>
+    
+    <div class="diagram-container">
+        <h2>Level 1: System Context</h2>
+        <pre class="mermaid">
+flowchart TD
+    User([Developer/User])
+    Admin([Administrator])
+    System[Anything to LLMs.txt]
+    Docling[(Docling Library)]
+    FileSystem[(File System)]
+    LLMAPI[(External LLM APIs)]
+    subgraph "LLM Ecosystem"
+        LlamaIndex[(LlamaIndex)]
+        LangChain[(LangChain)]
+    end
+    User -->|"Converts documents"| System
+    Admin -->|"Configures/monitors"| System
+    System -->|"Parses documents"| Docling
+    System -->|"Reads/Writes"| FileSystem
+    System -->|"Optional validation"| LLMAPI
+    System -->|"Exports compatible data"| LlamaIndex
+    System -->|"Exports compatible data"| LangChain
+        </pre>
+    </div>
+    
+    <div class="diagram-container">
+        <h2>Level 2: Container Diagram</h2>
+        <pre class="mermaid">
+flowchart TD
+    User([Developer/User])
+    Admin([Administrator])
+    subgraph "Anything to LLMs.txt System"
+        CLI[CLI src/main.py]
+        API[REST API src/api/]
+        WebUI["Web UI (Planned)"]
+        CoreLib[Core Library src/tools/]
+        Redis[(Redis)]
+        Worker[Async Worker]
+        Config["Config Manager (Planned)"]
+    end
+    Docling[(Docling Library)]
+    FileSystem[(File System)]
+    Logging[(Logging Service)]
+    User -->|"Uses"| CLI
+    User -->|"Uses"| API
+    User -->|"Browser access"| WebUI
+    Admin -->|"Manages"| Config
+    Admin -->|"Monitors"| Logging
+    CLI -->|"Uses"| CoreLib
+    CLI -->|"Reads config"| Config
+    API -->|"Uses"| CoreLib
+    API -->|"Reads/Writes status"| Redis
+    API -->|"Delegates tasks"| Worker
+    API -->|"Reads config"| Config
+    WebUI -->|"Calls"| API
+    Worker -->|"Uses"| CoreLib
+    Worker -->|"Uses queue"| Redis
+    CoreLib -->|"Uses"| Docling
+    CoreLib -->|"Reads/Writes"| FileSystem
+    CoreLib -->|"Reports status/errors"| Logging
+    CoreLib -->|"Reads config"| Config
+        </pre>
+    </div>
+    
+    <div class="diagram-container">
+        <h2>Level 3: Component Diagram</h2>
+        <pre class="mermaid">
+flowchart TD
+    API[REST API]
+    CLI[CLI]
+    subgraph SRC["Core Library (src/tools/)"]
+        Converter[DocumentConverterTool]
+        Formatter[LLMSFormatter]
+        Analyzer[TokenAnalyzer]
+        Counter[count_tokens]
+        Processor[DocumentProcessor]
+        Smol[SmolDoclingProcessor]
+        OCR["OCRManager (Planned)"]
+        Cache["CacheManager (Planned)"]
+        Plugin["PluginManager (Planned)"]
+        Export["ExportManager (Planned)"]
+        Validation["DocumentValidator (Planned)"]
+    end
+    Docling[(Docling Library)]
+    API -->|Uses| Processor
+    CLI -->|Uses| Processor
+    Processor -->|Validates with| Validation
+    Processor -->|Delegates to| Converter
+    Processor -->|Caches with| Cache
+    Converter -->|Uses| Docling
+    Converter -->|Formats with| Formatter
+    Converter -->|Extracts text with| OCR
+    Converter -->|Optimizes with| Analyzer
+    Converter -->|Extends with| Plugin
+    Converter -->|Exports to| Export
+    Formatter -->|Counts tokens with| Counter
+    Analyzer -->|Uses| Counter
+    Export -->|Uses output from| Formatter
+    OCR -->|Can be extended by| Plugin
+    Formatter -->|Can be extended by| Plugin
+        </pre>
+    </div>
+    
+    <div class="diagram-container">
+        <h2>Level 4: Processing Flow</h2>
+        <pre class="mermaid">
+sequenceDiagram
+    participant User as User
+    participant API as API Service
+    participant Redis as Redis
+    participant Worker as Worker
+    participant Core as Core Library
+    participant Docling as Docling Library
+    participant Storage as File Storage
+    User->>API: 1. Submit document (POST /api/convert)
+    API->>Storage: 2. Store document
+    API->>Redis: 3. Create job (pending)
+    API->>Worker: 4. Submit job
+    API->>User: 5. Return job_id
+    Worker->>Redis: 6. Get next job
+    Worker->>Storage: 7. Load document
+    Worker->>Core: 8. Process document
+    Core->>Docling: 9. Analyze document
+    Docling-->>Core: Return analysis
+    Core-->>Worker: 10. Return processed doc
+    Worker->>Storage: 11. Store result
+    Worker->>Redis: 12. Update status (complete)
+    User->>API: 13. Check status (GET /api/jobs/{id})
+    API->>Redis: 14. Get job status
+    API-->>User: 15. Return status + location
+    User->>Storage: 16. Download result
+        </pre>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose',
+            logLevel: 'error',
+            flowchart: { 
+                useMaxWidth: false, 
+                htmlLabels: true 
+            }
+        });
+        
+        // Check for errors
+        mermaid.parseError = function(err, hash) {
+            console.error('Mermaid error:', err);
+            alert('Mermaid parsing error: ' + err);
+        };
+    </script>
+</body>
+</html>

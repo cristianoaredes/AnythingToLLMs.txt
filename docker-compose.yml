@@ -1,0 +1,21 @@
+services:
+  api:
+    build: .
+    # Mapeia a porta 8001 do host para a porta 8000 do container
+    ports:
+      - "8001:8000"
+    environment:
+      - LLMS_LOG_LEVEL=INFO
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7
+    # Removi o mapeamento de porta para não conflitar com Redis local
+    # Caso precise expor externamente, ajuste este mapeamento conforme necessário
+    # Persistência de dados
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data: 

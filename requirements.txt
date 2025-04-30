@@ -1,0 +1,39 @@
+docling==2.30.0
+python-dotenv==1.1.0
+reportlab==4.4.0
+pytest==8.3.5
+pandas
+numpy
+python-docx
+pypdf2
+tiktoken
+transformers
+pillow
+
+# Opcional: para uso do SmolDocling
+torch
+
+langchain_community
+
+# API REST
+fastapi>=0.110.0
+uvicorn>=0.27.0
+python-multipart>=0.0.9
+aiofiles>=0.8.0
+
+# Opcional: para integração com LangChain
+# langchain-core
+# langchain-docling
+
+# Test dependencies for API integration tests
+pytest-asyncio>=0.20.3
+httpx>=0.24.0
+
+# Dev dependencies for lint and type checking
+flake8>=5.0.4
+mypy>=0.991
+
+redis>=4.6.0
+
+# Ferramenta headless para scraping de páginas JS
+playwright>=1.37.0
