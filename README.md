@@ -1,14 +1,32 @@
-[![WIP](https://img.shields.io/badge/status-WIP-yellow?style=for-the-badge&logo=github)](https://github.com/cristianocosta/anything-to-llms-txt)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue?style=for-the-badge&logo=python)](https://www.python.org/)
-[![Build](https://img.shields.io/github/actions/workflow/status/cristianocosta/anything-to-llms-txt/ci.yml?branch=main&style=for-the-badge&logo=github)](https://github.com/cristianocosta/anything-to-llms-txt/actions)
-[![Issues](https://img.shields.io/github/issues/cristianocosta/anything-to-llms-txt?style=for-the-badge)](https://github.com/cristianocosta/anything-to-llms-txt/issues)
-[![PRs](https://img.shields.io/github/issues-pr/cristianocosta/anything-to-llms-txt?style=for-the-badge)](https://github.com/cristianocosta/anything-to-llms-txt/pulls)
-[![Stars](https://img.shields.io/github/stars/cristianocosta/anything-to-llms-txt?style=for-the-badge)](https://github.com/cristianocosta/anything-to-llms-txt/stargazers)
+<div align="center">
 
-# Anything to LLMs.txt
+# 📄 ➡️ 🧠 Anything to LLMs.txt
+
+<!-- Project Status -->
+[![Status](https://img.shields.io/badge/status-WIP-yellow?style=flat-square)](https://github.com/cristianocosta/anything-to-llms-txt)
+[![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/cristianocosta/anything-to-llms-txt/ci.yml?branch=main&style=flat-square&logo=github-actions&logoColor=white)](https://github.com/cristianocosta/anything-to-llms-txt/actions)
+
+<!-- Technology -->
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.95%2B-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Docker](https://img.shields.io/badge/docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
+
+<!-- Features -->
+[![LLM Ready](https://img.shields.io/badge/LLM-ready-green?style=flat-square&logo=openai&logoColor=white)](https://github.com/cristianocosta/anything-to-llms-txt)
+[![OCR Support](https://img.shields.io/badge/OCR-supported-blueviolet?style=flat-square)](https://github.com/cristianocosta/anything-to-llms-txt)
+[![Formats](https://img.shields.io/badge/formats-PDF%20|%20DOCX%20|%20HTML%20|%20TXT-lightgrey?style=flat-square)](https://github.com/cristianocosta/anything-to-llms-txt)
+
+<!-- Community -->
+[![Issues](https://img.shields.io/github/issues/cristianocosta/anything-to-llms-txt?style=flat-square&logo=github)](https://github.com/cristianocosta/anything-to-llms-txt/issues)
+[![PRs](https://img.shields.io/github/issues-pr/cristianocosta/anything-to-llms-txt?style=flat-square&logo=git)](https://github.com/cristianocosta/anything-to-llms-txt/pulls)
+[![Stars](https://img.shields.io/github/stars/cristianocosta/anything-to-llms-txt?style=flat-square&logo=github)](https://github.com/cristianocosta/anything-to-llms-txt/stargazers)
+
+</div>
 
 > **Universal document converter to the structured LLMs.txt format, optimized for use with Large Language Models (LLMs).**
+>
+> ⚠️ **This project is a Work In Progress (WIP).** Features may change, and some functionality might be incomplete.
 
 ---
 
@@ -19,6 +37,8 @@ Anything to LLMs.txt transforms documents in PDF, DOCX, HTML, TXT, and other for
 ---
 
 ## 📦 Installation
+
+> ⚠️ **Note:** As this is a WIP project, installation and dependencies may change.
 
 ```bash
 git clone https://github.com/cristianocosta/anything-to-llms-txt.git
@@ -31,31 +51,31 @@ pip install -r requirements.txt
 ## 🚀 Quick Start
 
 ```bash
-python -m src.main --file data/test_files/exemplo.pdf
+python -m src.main --file data/test_files/example.pdf
 ```
 
 ### Custom Chunking
 
 ```bash
-python -m src.main --file data/test_files/exemplo.pdf --chunk-size 1000 --chunk-overlap 100
+python -m src.main --file data/test_files/example.pdf --chunk-size 1000 --chunk-overlap 100
 ```
 
 ### Output Profiles
 
 ```bash
-python -m src.main --file data/test_files/exemplo.pdf --profile llms-tables
+python -m src.main --file data/test_files/example.pdf --profile llms-tables
 ```
 
 ### Token Analysis
 
 ```bash
-python -m src.main --count-tokens output/exemplo.llms.txt --analyze
+python -m src.main --count-tokens output/example.llms.txt --analyze
 ```
 
 ### Batch Processing
 
 ```bash
-python examples/document_analysis_example.py -dir data/test_files -p "*.pdf" -v -b "termos importantes" -c
+python examples/document_analysis_example.py -dir data/test_files -p "*.pdf" -v -b "important terms" -c
 ```
 
 ---
@@ -92,21 +112,21 @@ optional arguments:
   --verbose, -vb
 ```
 
-### Opções do Document Analysis Example
+### Document Analysis Example Options
 
 ```text
 usage: document_analysis_example.py [options]
 
 optional arguments:
-  -h, --help                     Mostrar esta mensagem de ajuda
-  -d, --documento DOCUMENTO     Caminho para o documento a ser analisado
-  -dir, --diretorio DIRETORIO   Diretório para processamento em lote de documentos
-  -p, --padrao PADRAO           Padrão de arquivos para processamento em lote (padrão: *.pdf)
-  -v, --visualizar              Gerar visualização HTML do documento
-  -b, --buscar TEXTO            Texto a ser buscado no documento
-  -c, --classificar             Classificar imagens no documento
-  -s, --saida DIRETORIO         Diretório para salvar resultados (padrão: ./resultados)
-  -l, --limite VALOR            Limite de confiança para classificação de imagens (0-1)
+  -h, --help                     Show this help message
+  -d, --document DOCUMENT       Path to the document to be analyzed
+  -dir, --directory DIRECTORY   Directory for batch processing of documents
+  -p, --pattern PATTERN         File pattern for batch processing (default: *.pdf)
+  -v, --visualize               Generate HTML visualization of the document
+  -b, --search TEXT             Text to search in the document
+  -c, --classify                Classify images in the document
+  -s, --output DIRECTORY        Directory to save results (default: ./results)
+  -l, --limit VALUE             Confidence threshold for image classification (0-1)
 ```
 
 ---
@@ -142,37 +162,37 @@ Raw text...
 
 ## 🧰 Document Analysis Features
 
-Além da conversão para LLMs.txt, o sistema oferece recursos avançados de análise de documentos:
+In addition to converting to LLMs.txt, the system offers advanced document analysis features:
 
-- **Processamento em Lote:** Processe múltiplos documentos em um diretório com um único comando
-- **Busca de Texto com Posicionamento:** Localize termos específicos e obtenha suas coordenadas no documento
-- **Classificação de Imagens:** Identifique o conteúdo de imagens nos documentos
-- **Visualização HTML:** Gere representações visuais interativas dos documentos processados
-- **Relatórios Detalhados:** Obtenha relatórios completos do processamento em lote com métricas e resultados
+- **Batch Processing:** Process multiple documents in a directory with a single command
+- **Text Search with Positioning:** Locate specific terms and get their coordinates in the document
+- **Image Classification:** Identify the content of images in documents
+- **HTML Visualization:** Generate interactive visual representations of processed documents
+- **Detailed Reports:** Get complete batch processing reports with metrics and results
 
-### Exemplo de Processamento em Lote
+### Batch Processing Example
 
 ```python
 from src.tools.document_converter import DocumentConverter
 
 converter = DocumentConverter()
-resultados = converter.processar_em_lote(
-    diretorio="./documentos",
-    padrao="*.pdf",
-    opcoes={
-        "visualizar": True,
-        "buscar": "inteligência artificial",
-        "classificar": True,
-        "limite_confianca": 0.6,
-        "diretorio_saida": "./resultados"
+results = converter.process_batch(
+    directory="./documents",
+    pattern="*.pdf",
+    options={
+        "visualize": True,
+        "search": "artificial intelligence",
+        "classify": True,
+        "confidence_threshold": 0.6,
+        "output_directory": "./results"
     }
 )
 
-# Acessar resultados individuais
-for arquivo, resultado in resultados.items():
-    print(f"Arquivo: {arquivo}, Status: {resultado['status']}")
-    if resultado.get("busca"):
-        print(f"  Ocorrências encontradas: {resultado['busca']['resultados']}")
+# Access individual results
+for file, result in results.items():
+    print(f"File: {file}, Status: {result['status']}")
+    if result.get("search"):
+        print(f"  Occurrences found: {result['search']['results']}")
 ```
 
 ---
@@ -230,11 +250,11 @@ flowchart TD
     subgraph "Anything to LLMs.txt System"
         CLI[CLI src/main.py]
         API[REST API src/api/]
-        WebUI[Web UI (Planned)]
+        WebUI["Web UI (Planned)"]
         CoreLib[Core Library src/tools/]
         Redis[(Redis)]
         Worker[Async Worker]
-        Config[Config Manager (Planned)]
+        Config["Config Manager (Planned)"]
     end
     Docling[(Docling Library)]
     FileSystem[(File System)]
@@ -344,11 +364,13 @@ sequenceDiagram
 - **Modular Python** for extensibility and testability
 - **Workers** for background processing
 
-*See [docs/architecture.md](docs/architecture.md) for detailed rationale and alternatives considered.*
+*The architecture is designed for modularity, scalability, and extensibility.*
 
 ---
 
 ## 🚦 Roadmap & Next Steps
+
+As this is a **Work In Progress (WIP)**, we're actively developing the following features:
 
 - Implement planned components: PluginManager, ExportManager, CacheManager, DocumentValidator, OCRManager
 - Develop Web UI for uploads and job tracking
@@ -357,7 +379,7 @@ sequenceDiagram
 - Integrate with more LLM frameworks
 - Optimize for large-scale, multi-format batch processing
 
-*See the [architecture doc](docs/architecture.md#roadmap-e-próximos-passos) for more.*
+*These improvements will enhance the system's capabilities and user experience. Contributions and feedback are welcome!*
 
 ---
 
