@@ -12,6 +12,7 @@ from src.api.routers import converter, analyzer
 from src.utils.logging_config import setup_logger
 from src.api.services.conversion_service import redis_client
 from src.config import UPLOAD_DIR
+from src.api.metrics import metrics_middleware, metrics_endpoint, update_health_metrics
 
 # Configurar logger
 logger = setup_logger(__name__)
@@ -36,6 +37,9 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization", "X-API-Key"],  # Apenas headers necessários
 )
 
+# Adicionar middleware de métricas
+app.middleware("http")(metrics_middleware)
+
 # Incluir routers
 app.include_router(converter.router, prefix="/v1")
 app.include_router(analyzer.router, prefix="/v1")
@@ -47,6 +51,21 @@ async def root():
         "docs_url": "/docs",
         "redoc_url": "/redoc",
     }
+
+
+@app.get("/metrics")
+async def metrics():
+    """
+    Endpoint de métricas Prometheus.
+
+    Acesse em /metrics para ver métricas de:
+    - Requisições HTTP (total, duração, em andamento)
+    - Jobs de conversão (total, duração, status)
+    - Erros (total por tipo)
+    - Health checks (status, Redis, disco)
+    """
+    return await metrics_endpoint()
+
 
 @app.get("/health")
 async def health_check():
@@ -102,6 +121,15 @@ async def health_check():
             health_status["checks"]["upload_dir"] = {"status": "error", "writable": False}
     except Exception as e:
         health_status["checks"]["upload_dir"] = {"status": "error", "message": str(e)}
+
+    # Atualizar métricas Prometheus
+    redis_ok = health_status["checks"].get("redis", {}).get("status") == "ok"
+    disk_percent = health_status["checks"].get("disk", {}).get("percent_used", 0.0)
+    update_health_metrics(
+        healthy=(health_status["status"] == "healthy"),
+        redis_ok=redis_ok,
+        disk_percent=disk_percent
+    )
 
     # Retornar código HTTP apropriado
     status_code = 200 if health_status["status"] == "healthy" else 503

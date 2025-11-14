@@ -16,6 +16,7 @@ from src.tools.token_counter import count_tokens
 from src.api.models import ConversionRequest, ConversionResult
 from src.utils.logging_config import setup_logger
 from src.config import REDIS_URL, UPLOAD_DIR, JOB_TTL_PROCESSING, JOB_TTL_COMPLETED, JOB_TTL_FAILED
+from src.api.metrics import record_job_created, record_job_completed, record_job_failed
 from redis.asyncio import Redis
 
 # Configurar logger
@@ -154,7 +155,10 @@ async def process_document(
 
         # Estender TTL após conclusão (para usuário buscar resultado)
         await redis_client.expire(job_key, JOB_TTL_COMPLETED)
-        
+
+        # Registrar métrica de sucesso
+        record_job_completed(elapsed)
+
         # Limpar arquivo temporário após o processamento
         try:
             os.remove(file_path)
@@ -164,6 +168,9 @@ async def process_document(
     except Exception as e:
         logger.error(f"Erro no processamento do job {job_id}: {str(e)}")
         await redis_client.hset(job_key, mapping={"status": "failed", "error": str(e)})
+
+        # Registrar métrica de falha
+        record_job_failed()
 
         # TTL para jobs com erro (para debug)
         await redis_client.expire(job_key, JOB_TTL_FAILED)
@@ -207,10 +214,13 @@ async def create_conversion_job(
     }
     await redis_client.hset(job_key, mapping=job_meta)
 
+    # Registrar métrica de job criado
+    record_job_created()
+
     # TTL Strategy: Diferente para cada estado do job
     # TTL inicial (jobs em processamento que travaram)
     await redis_client.expire(job_key, JOB_TTL_PROCESSING)
-    
+
     # Salvar arquivo
     file_path = await save_upload_file(file_content, f"{job_id}_{filename}")
     
