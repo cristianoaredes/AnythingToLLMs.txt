@@ -9,6 +9,7 @@ import re
 from datetime import datetime
 from src.utils.logging_config import setup_logger
 from src.tools.token_counter import count_tokens
+from src.config import MIN_PARAGRAPH_LENGTH, MAX_SUMMARY_PARAGRAPHS, MAX_SUMMARY_LENGTH
 
 # Configurar logger para este módulo
 logger = setup_logger(__name__)
@@ -259,16 +260,16 @@ class LLMSFormatter:
                     # Pular linhas com # (títulos) já processados
                     if p.strip().startswith('#'):
                         continue
-                    
-                    # Pular linhas muito curtas (menos de 40 caracteres)
-                    if len(p.strip()) < 40:
+
+                    # Pular linhas muito curtas
+                    if len(p.strip()) < MIN_PARAGRAPH_LENGTH:
                         continue
-                    
+
                     # Adicionar parágrafo significativo
                     significant_paragraphs.append(p.strip())
-                    
-                    # Limitar a 2 parágrafos significativos
-                    if len(significant_paragraphs) >= 2:
+
+                    # Limitar número de parágrafos
+                    if len(significant_paragraphs) >= MAX_SUMMARY_PARAGRAPHS:
                         break
                 
                 # Juntar parágrafos significativos
@@ -282,13 +283,13 @@ class LLMSFormatter:
                 for chunk in doc.chunks:
                     if hasattr(chunk, 'text') and chunk.text:
                         # Pular chunks muito curtos
-                        if len(chunk.text.strip()) < 40:
+                        if len(chunk.text.strip()) < MIN_PARAGRAPH_LENGTH:
                             continue
-                        
+
                         text_chunks.append(chunk.text.strip())
-                        
-                        # Limitar a 2 chunks significativos
-                        if len(text_chunks) >= 2:
+
+                        # Limitar número de chunks
+                        if len(text_chunks) >= MAX_SUMMARY_PARAGRAPHS:
                             break
                 
                 if text_chunks:
@@ -296,24 +297,24 @@ class LLMSFormatter:
             
             # Limitar tamanho do sumário
             if summary:
-                # Limitar a 1000 caracteres
-                if len(summary) > 1000:
+                # Limitar ao tamanho máximo configurado
+                if len(summary) > MAX_SUMMARY_LENGTH:
                     # Truncar no final do último parágrafo completo
-                    last_paragraph_end = summary[:1000].rfind('\n\n')
+                    last_paragraph_end = summary[:MAX_SUMMARY_LENGTH].rfind('\n\n')
                     if last_paragraph_end > 0:
                         summary = summary[:last_paragraph_end]
                     else:
                         # Se não encontrar parágrafo, truncar na última frase completa
                         last_sentence_end = max(
-                            summary[:1000].rfind('. '), 
-                            summary[:1000].rfind('! '), 
-                            summary[:1000].rfind('? ')
+                            summary[:MAX_SUMMARY_LENGTH].rfind('. '),
+                            summary[:MAX_SUMMARY_LENGTH].rfind('! '),
+                            summary[:MAX_SUMMARY_LENGTH].rfind('? ')
                         )
                         if last_sentence_end > 0:
                             summary = summary[:last_sentence_end+1]
                         else:
-                            # Último recurso: truncar em 1000 caracteres
-                            summary = summary[:1000] + "..."
+                            # Último recurso: truncar no tamanho máximo
+                            summary = summary[:MAX_SUMMARY_LENGTH] + "..."
             
             return summary
             

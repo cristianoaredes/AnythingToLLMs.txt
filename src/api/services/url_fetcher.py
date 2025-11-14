@@ -8,6 +8,8 @@ async def fetch_and_save_url(url: str) -> str:
     """
     Navega até a URL usando um browser headless, espera o carregamento de rede e salva o HTML em arquivo temporário.
 
+    IMPORTANTE: O chamador é responsável por deletar o arquivo temporário após uso.
+
     Args:
         url: URL da página a ser buscada
     Returns:

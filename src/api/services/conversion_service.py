@@ -15,17 +15,16 @@ from src.tools.token_analyzer import TokenAnalyzer
 from src.tools.token_counter import count_tokens
 from src.api.models import ConversionRequest, ConversionResult
 from src.utils.logging_config import setup_logger
+from src.config import REDIS_URL, UPLOAD_DIR, JOB_TTL_PROCESSING, JOB_TTL_COMPLETED, JOB_TTL_FAILED
 from redis.asyncio import Redis
 
 # Configurar logger
 logger = setup_logger(__name__)
 
 # Inicializar cliente Redis para jobs
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379/0')
 redis_client = Redis.from_url(REDIS_URL, decode_responses=True)
 
-# Diretório temporário para uploads
-UPLOAD_DIR = "temp/uploads"
+# Criar diretório de uploads
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
@@ -122,15 +121,21 @@ async def process_document(
         if params.to_langchain:
             await redis_client.hset(job_key, mapping={"status_message": "Exportando para framework LangChain"})
             doc = resultado["doc"]
-            
+
             try:
                 langchain_docs = converter.exportar_para_langchain(doc)
                 if langchain_docs:
                     await redis_client.hset(job_key, mapping={"langchain_docs_count": len(langchain_docs)})
+            except NotImplementedError as e:
+                logger.warning(f"LangChain não implementado: {str(e)}")
+                await redis_client.hset(job_key, mapping={
+                    "langchain_error": "Funcionalidade não implementada",
+                    "langchain_message": str(e)
+                })
             except Exception as e:
                 logger.error(f"Erro ao exportar para LangChain: {str(e)}")
                 await redis_client.hset(job_key, mapping={"langchain_error": str(e)})
-                
+
             await redis_client.hset(job_key, mapping={"progress": "0.95"})
         
         # Criar resultado e persistir em Redis
@@ -146,6 +151,9 @@ async def process_document(
             "status_message": "Processamento concluído",
             "result": json.dumps(result_data)
         })
+
+        # Estender TTL após conclusão (para usuário buscar resultado)
+        await redis_client.expire(job_key, JOB_TTL_COMPLETED)
         
         # Limpar arquivo temporário após o processamento
         try:
@@ -156,6 +164,9 @@ async def process_document(
     except Exception as e:
         logger.error(f"Erro no processamento do job {job_id}: {str(e)}")
         await redis_client.hset(job_key, mapping={"status": "failed", "error": str(e)})
+
+        # TTL para jobs com erro (para debug)
+        await redis_client.expire(job_key, JOB_TTL_FAILED)
         
         # Garantir limpeza mesmo em caso de erro
         try:
@@ -195,8 +206,10 @@ async def create_conversion_job(
         "params": json.dumps(params.model_dump())
     }
     await redis_client.hset(job_key, mapping=job_meta)
-    # Definir TTL de 1 hora
-    await redis_client.expire(job_key, 3600)
+
+    # TTL Strategy: Diferente para cada estado do job
+    # TTL inicial (jobs em processamento que travaram)
+    await redis_client.expire(job_key, JOB_TTL_PROCESSING)
     
     # Salvar arquivo
     file_path = await save_upload_file(file_content, f"{job_id}_{filename}")

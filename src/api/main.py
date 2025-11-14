@@ -2,6 +2,7 @@
 Ponto de entrada da API REST do Anything to LLMs.txt.
 """
 
+import os
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,13 +21,17 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Configurar CORS
+# Configurar CORS - Seguro por padrão
+# Use CORS_ORIGINS env var para produção: "https://app.exemplo.com,https://admin.exemplo.com"
+allowed_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8080").split(",")
+allowed_origins = [origin.strip() for origin in allowed_origins]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Em produção, restrinja para domínios autorizados
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE"],  # Apenas métodos necessários
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],  # Apenas headers necessários
 )
 
 # Incluir routers
@@ -47,10 +52,18 @@ async def health_check():
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Erro não tratado: {str(exc)}")
+    # Log completo do erro (com stack trace para debug)
+    logger.error(f"Erro não tratado: {str(exc)}", exc_info=True)
+
+    # Em desenvolvimento, mostra detalhes; em produção, mensagem genérica
+    is_dev = os.getenv("ENVIRONMENT", "production").lower() == "development"
+
     return JSONResponse(
         status_code=500,
-        content={"detail": "Erro interno do servidor. Por favor, tente novamente mais tarde."}
+        content={
+            "detail": str(exc) if is_dev else "Erro interno do servidor. Por favor, tente novamente mais tarde.",
+            "type": type(exc).__name__ if is_dev else "InternalServerError"
+        }
     )
 
 @app.on_event("shutdown")
