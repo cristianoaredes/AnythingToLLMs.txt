@@ -96,6 +96,9 @@ IMAGE_RESIZE_SIZE = int(os.getenv("IMAGE_RESIZE_SIZE", "224"))
 # Nível de log (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 LOG_LEVEL = os.getenv("LLMS_LOG_LEVEL", "INFO")
 
+# Formato de log (text ou json)
+LOG_FORMAT = os.getenv("LOG_FORMAT", "text")
+
 # ========================================
 # Configurações de Servidor
 # ========================================

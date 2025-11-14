@@ -5,6 +5,7 @@ Rotas para conversão de documentos.
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from fastapi.responses import JSONResponse
 import json
+from urllib.parse import urlparse
 from src.api.models import ConversionRequest, ConversionResponse, StatusResponse
 from src.api.services.conversion_service import create_conversion_job, get_job_status, get_job_details
 from src.utils.logging_config import setup_logger
@@ -21,6 +22,48 @@ router = APIRouter(
     tags=["convert"],
     dependencies=[Depends(verify_api_key), Depends(rate_limiter)]
 )
+
+
+def validate_url(url: str) -> None:
+    """
+    Valida URL para prevenir ataques.
+
+    Rejeita:
+    - Esquemas maliciosos (file://, javascript:, data:, etc.)
+    - URLs muito longas
+    - URLs sem hostname válido
+
+    Raises:
+        HTTPException: Se a URL for inválida ou maliciosa
+    """
+    # Validar comprimento
+    if len(url) > 2048:
+        raise HTTPException(status_code=400, detail="URL muito longa (máximo 2048 caracteres)")
+
+    # Parse da URL
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        raise HTTPException(status_code=400, detail="URL malformada")
+
+    # Validar esquema (apenas http e https)
+    if parsed.scheme not in ['http', 'https']:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Esquema de URL não permitido: {parsed.scheme}. Use http:// ou https://"
+        )
+
+    # Validar hostname
+    if not parsed.netloc:
+        raise HTTPException(status_code=400, detail="URL sem hostname válido")
+
+    # Prevenir localhost/IPs privadas (opcional, mas recomendado em produção)
+    blocked_hosts = ['localhost', '127.0.0.1', '0.0.0.0', '::1']
+    if parsed.netloc.lower() in blocked_hosts or parsed.netloc.startswith('192.168.') or parsed.netloc.startswith('10.'):
+        raise HTTPException(
+            status_code=400,
+            detail="URLs para localhost ou IPs privadas não são permitidas"
+        )
 
 @router.post("/", response_model=ConversionResponse)
 async def convert_document(
@@ -43,6 +86,9 @@ async def convert_document(
 
     # Obter conteúdo e nome do arquivo
     if url:
+        # Validar URL antes de processar
+        validate_url(url)
+
         temp_path = None
         try:
             temp_path = await fetch_and_save_url(url)
