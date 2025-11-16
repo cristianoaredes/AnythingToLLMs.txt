@@ -1,21 +1,65 @@
+version: '3.8'
+
 services:
   api:
-    build: .
-    # Mapeia a porta 8001 do host para a porta 8000 do container
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: llms-txt-api:latest
+    container_name: llms-api
     ports:
-      - "8001:8000"
+      - "${SERVER_PORT:-8000}:8000"
+    env_file:
+      - .env
     environment:
-      - LLMS_LOG_LEVEL=INFO
+      # Sobrescrever valores do .env se necessário
+      - REDIS_URL=redis://redis:6379/0
+      - UPLOAD_DIR=/app/temp/uploads
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s  # Playwright install leva tempo
+    volumes:
+      - ./temp:/app/temp  # Persistir uploads temporários
+    networks:
+      - llms-network
 
   redis:
-    image: redis:7
-    # Removi o mapeamento de porta para não conflitar com Redis local
-    # Caso precise expor externamente, ajuste este mapeamento conforme necessário
-    # Persistência de dados
+    image: redis:7-alpine
+    container_name: llms-redis
+    # Ativar persistência com AOF (Append Only File)
+    command: redis-server --appendonly yes --appendfsync everysec --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    # Limite de recursos (opcional, mas recomendado)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    networks:
+      - llms-network
 
 volumes:
-  redis_data: 
+  redis_data:
+    driver: local
+
+networks:
+  llms-network:
+    driver: bridge

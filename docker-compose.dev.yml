@@ -1,0 +1,55 @@
+version: '3.8'
+
+# Docker Compose para DESENVOLVIMENTO com hot-reload
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: llms-txt-api:dev
+    container_name: llms-api-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - LOG_FORMAT=text
+      - LLMS_LOG_LEVEL=DEBUG
+      - REDIS_URL=redis://redis:6379/0
+      - UPLOAD_DIR=/app/temp/uploads
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:8080,http://localhost:5173
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      # IMPORTANTE: Mount do código fonte para hot-reload
+      - ./src:/app/src
+      - ./temp:/app/temp
+    # Sobrescrever CMD para usar --reload
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - llms-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: llms-redis-dev
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"  # Expor para acesso externo em dev
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - llms-network
+
+volumes:
+  redis_dev_data:
+    driver: local
+
+networks:
+  llms-network:
+    driver: bridge

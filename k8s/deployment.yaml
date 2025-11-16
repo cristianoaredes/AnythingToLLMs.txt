@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llms-api
+  labels:
+    app: llms-api
+spec:
+  replicas: 3  # Mínimo inicial, HPA vai ajustar
+  selector:
+    matchLabels:
+      app: llms-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0  # Zero downtime
+  template:
+    metadata:
+      labels:
+        app: llms-api
+    spec:
+      # Segurança: rodar como usuário não-root
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+
+      containers:
+      - name: api
+        image: llms-txt-api:latest
+        imagePullPolicy: Always
+
+        ports:
+        - containerPort: 8000
+          name: http
+
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+
+        # Recursos (necessário para HPA)
+        resources:
+          requests:
+            cpu: 500m      # 0.5 CPU
+            memory: 512Mi
+          limits:
+            cpu: 2000m     # 2 CPUs
+            memory: 2Gi
+
+        # Variáveis de ambiente
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: LOG_FORMAT
+          value: "json"
+        - name: LLMS_LOG_LEVEL
+          value: "INFO"
+        - name: REDIS_URL
+          value: "redis://redis:6379/0"
+
+        # Secrets
+        - name: LLMS_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llms-secrets
+              key: api-key
+
+        # ConfigMap
+        envFrom:
+        - configMapRef:
+            name: llms-config
+
+        # Volume para uploads temporários
+        volumeMounts:
+        - name: temp-storage
+          mountPath: /app/temp
+
+      volumes:
+      - name: temp-storage
+        emptyDir:
+          sizeLimit: 10Gi
+
+---
+# Secret (exemplo - deve ser criado via kubectl ou CI/CD)
+# kubectl create secret generic llms-secrets --from-literal=api-key=$(python -c "import secrets; print(secrets.token_urlsafe(64))")
+apiVersion: v1
+kind: Secret
+metadata:
+  name: llms-secrets
+type: Opaque
+data:
+  # Base64 encoded - exemplo placeholder
+  # Substitua com valor real em produção
+  api-key: Q0hBTkdFX01FX0lOX1BST0RVQ1RJT04=  # "CHANGE_ME_IN_PRODUCTION"

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: llms-api
+  labels:
+    app: llms-api
+spec:
+  type: LoadBalancer  # Use ClusterIP se tiver Ingress
+  selector:
+    app: llms-api
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8000
+    protocol: TCP
+
+  # Session affinity (opcional, útil para uploads grandes)
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600  # 1 hora

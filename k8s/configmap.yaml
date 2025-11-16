@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llms-config
+data:
+  # Configurações não-sensíveis
+  CORS_ORIGINS: "https://example.com,https://app.example.com"
+  MAX_FILE_SIZE: "52428800"  # 50MB
+  MIN_PARAGRAPH_LENGTH: "40"
+  MAX_SUMMARY_PARAGRAPHS: "2"
+  JOB_TTL_PROCESSING: "3600"     # 1 hora
+  JOB_TTL_COMPLETED: "86400"     # 24 horas
+  JOB_TTL_FAILED: "86400"        # 24 horas
+  CLEANUP_INTERVAL_SECONDS: "300"  # 5 minutos
+  ENABLE_IMAGE_CLASSIFICATION: "false"
+  ENABLE_OCR: "true"
+  OCR_LANGUAGE: "por+eng"

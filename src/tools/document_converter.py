@@ -295,22 +295,24 @@ class DocumentConverterTool:
     def exportar_para_langchain(self, document, save_json=False):
         """
         Exporta o documento processado para o formato compatível com LangChain.
-        Nota: Esta é uma implementação temporária até termos integração com LangChain.
+
+        ATENÇÃO: Esta funcionalidade ainda não foi implementada.
 
         Args:
             document: Documento processado pelo Docling
             save_json: Se True, salva o JSON antes de converter
 
         Returns:
-            Lista vazia (stub)
+            Não retorna - lança NotImplementedError
+
+        Raises:
+            NotImplementedError: Sempre, pois a funcionalidade não está implementada
         """
-        try:
-            logger.warning("Integração com LangChain ainda não implementada. Retornando lista vazia.")
-            # Retorna lista vazia como stub temporário
-            return []
-        except Exception as e:
-            logger.error(f"Erro ao exportar para LangChain: {str(e)}")
-            return []
+        logger.error("Integração com LangChain ainda não implementada.")
+        raise NotImplementedError(
+            "A exportação para LangChain ainda não foi implementada. "
+            "Esta funcionalidade está planejada para uma versão futura."
+        )
 
     def criar_chunks(self, doc, modelo_llm="gpt-3.5-turbo", max_tokens=1000):
         """
@@ -1192,47 +1194,11 @@ class DocumentConverterTool:
                             classificador = classificar_img_hf
 
                         except (ImportError, Exception) as e:
-                            logger.warning(f"Não foi possível usar o modelo HuggingFace: {str(e)}")
-
-                            try:
-                                # Tentar usar PIL e imagenet_labels como fallback
-                                # Esta é uma classificação falsa, apenas para demonstração
-                                logger.info("Usando método alternativo para classificação de imagens")
-
-                                # Lista de classes comuns
-                                classes_comuns = [
-                                    "documento", "tabela", "gráfico", "assinatura", "texto",
-                                    "formulário", "carimbo", "diagrama", "fotografia", "logotipo"
-                                ]
-
-                                def classificar_img_fake(img_array):
-                                    # Implementação simplificada para demonstração
-                                    # Na prática, precisaria de um modelo real
-                                    import random
-
-                                    # Selecionar aleatoriamente 2-3 classes
-                                    num_classes = random.randint(2, 3)
-                                    classes_selecionadas = random.sample(classes_comuns, num_classes)
-
-                                    # Atribuir confiança aleatória
-                                    resultados = []
-                                    for classe in classes_selecionadas:
-                                        conf = random.uniform(0.6, 0.95)
-                                        if conf >= limite_confianca:
-                                            resultados.append({
-                                                "classe": classe,
-                                                "confianca": round(conf, 4)
-                                            })
-
-                                    # Ordenar por confiança
-                                    resultados.sort(key=lambda x: x["confianca"], reverse=True)
-                                    return resultados
-
-                                classificador = classificar_img_fake
-
-                            except Exception as e2:
-                                logger.error(f"Não foi possível inicializar nenhum classificador: {str(e2)}")
-                                raise ValueError("Falha ao carregar modelos de classificação")
+                            logger.error(f"Não foi possível usar o modelo HuggingFace: {str(e)}")
+                            raise ValueError(
+                                "Classificação de imagens requer 'transformers' instalado. "
+                                "Instale com: pip install transformers torch"
+                            )
                     except Exception as e:
                         logger.error(f"Erro ao inicializar classificador padrão: {str(e)}")
                         raise ValueError(f"Não foi possível inicializar o classificador: {str(e)}")

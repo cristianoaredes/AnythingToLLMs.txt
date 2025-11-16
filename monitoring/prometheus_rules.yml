@@ -1,0 +1,184 @@
+groups:
+  # ========================================
+  # Alertas de Disponibilidade
+  # ========================================
+  - name: availability
+    interval: 30s
+    rules:
+      - alert: APIDown
+        expr: up{job="llms-txt-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "API está DOWN"
+          description: "API não está respondendo por mais de 1 minuto"
+          runbook: "docs/RUNBOOK.md#api-down"
+
+      - alert: HealthCheckUnhealthy
+        expr: health_check_status == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: health
+        annotations:
+          summary: "Health check retornando unhealthy"
+          description: "Health check falhou por mais de 2 minutos. Verificar Redis, disco, etc."
+          runbook: "docs/RUNBOOK.md#health-check-failed"
+
+      - alert: RedisConnectionLost
+        expr: redis_connection_status == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: redis
+        annotations:
+          summary: "Conexão com Redis perdida"
+          description: "API não consegue conectar ao Redis"
+          runbook: "docs/RUNBOOK.md#redis-connection-lost"
+
+  # ========================================
+  # Alertas de Performance
+  # ========================================
+  - name: performance
+    interval: 1m
+    rules:
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Tempo de resposta alto (P95 > 2s)"
+          description: "95% das requisições estão demorando mais de 2 segundos"
+          runbook: "docs/RUNBOOK.md#high-response-time"
+
+      - alert: HighErrorRate
+        expr: rate(errors_total[5m]) > 10
+        for: 3m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Taxa de erro elevada"
+          description: "Mais de 10 erros/minuto nos últimos 5 minutos"
+          runbook: "docs/RUNBOOK.md#high-error-rate"
+
+      - alert: JobProcessingTooSlow
+        expr: histogram_quantile(0.90, rate(conversion_job_duration_seconds_bucket[10m])) > 300
+        for: 10m
+        labels:
+          severity: warning
+          component: jobs
+        annotations:
+          summary: "Jobs demorando muito (P90 > 5min)"
+          description: "90% dos jobs estão demorando mais de 5 minutos"
+          runbook: "docs/RUNBOOK.md#slow-job-processing"
+
+  # ========================================
+  # Alertas de Recursos
+  # ========================================
+  - name: resources
+    interval: 1m
+    rules:
+      - alert: DiskSpaceCritical
+        expr: disk_usage_percent > 95
+        for: 5m
+        labels:
+          severity: critical
+          component: disk
+        annotations:
+          summary: "Espaço em disco crítico (>95%)"
+          description: "Disco com {{ $value }}% de uso. Limpar arquivos urgente!"
+          runbook: "docs/RUNBOOK.md#disk-space-critical"
+
+      - alert: DiskSpaceWarning
+        expr: disk_usage_percent > 85 and disk_usage_percent <= 95
+        for: 10m
+        labels:
+          severity: warning
+          component: disk
+        annotations:
+          summary: "Espaço em disco baixo (>85%)"
+          description: "Disco com {{ $value }}% de uso. Planejar limpeza."
+          runbook: "docs/RUNBOOK.md#disk-space-warning"
+
+      - alert: HighMemoryUsage
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: memory
+        annotations:
+          summary: "Uso de memória alto (>90%)"
+          description: "Container usando mais de 90% da memória disponível"
+          runbook: "docs/RUNBOOK.md#high-memory-usage"
+
+  # ========================================
+  # Alertas de Jobs
+  # ========================================
+  - name: jobs
+    interval: 1m
+    rules:
+      - alert: JobFailureRateHigh
+        expr: rate(conversion_jobs_total{status="failed"}[10m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: jobs
+        annotations:
+          summary: "Taxa de falha de jobs elevada"
+          description: "Mais de 10% dos jobs estão falhando"
+          runbook: "docs/RUNBOOK.md#job-failure-rate-high"
+
+      - alert: NoJobsProcessed
+        expr: rate(conversion_jobs_total{status="completed"}[30m]) == 0
+        for: 30m
+        labels:
+          severity: warning
+          component: jobs
+        annotations:
+          summary: "Nenhum job completado em 30min"
+          description: "Sistema pode estar travado ou sem demanda"
+          runbook: "docs/RUNBOOK.md#no-jobs-processed"
+
+  # ========================================
+  # Alertas de HTTP
+  # ========================================
+  - name: http
+    interval: 1m
+    rules:
+      - alert: High4xxErrorRate
+        expr: rate(http_requests_total{status=~"4.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Alta taxa de erros 4xx (>5%)"
+          description: "Mais de 5% das requisições retornando 4xx (client errors)"
+          runbook: "docs/RUNBOOK.md#high-4xx-errors"
+
+      - alert: High5xxErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.01
+        for: 3m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "Alta taxa de erros 5xx (>1%)"
+          description: "Mais de 1% das requisições retornando 5xx (server errors)"
+          runbook: "docs/RUNBOOK.md#high-5xx-errors"
+
+      - alert: TooManyRequests
+        expr: rate(http_requests_total[1m]) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Volume de requisições muito alto (>1000/min)"
+          description: "Possível ataque ou tráfego anormal. Verificar rate limiting."
+          runbook: "docs/RUNBOOK.md#too-many-requests"

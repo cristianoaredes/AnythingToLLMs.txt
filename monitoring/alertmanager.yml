@@ -1,0 +1,172 @@
+global:
+  # Configurações globais
+  resolve_timeout: 5m
+  # SMTP para emails (configurar com suas credenciais)
+  smtp_from: 'alerts@exemplo.com'
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_auth_username: 'alerts@exemplo.com'
+  smtp_auth_password: '${SMTP_PASSWORD}'  # Usar secret!
+  smtp_require_tls: true
+
+# Templates customizados (opcional)
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# ========================================
+# Rotas de Notificação
+# ========================================
+route:
+  # Configuração padrão
+  group_by: ['alertname', 'severity', 'component']
+  group_wait: 10s        # Aguardar 10s antes de enviar primeiro alerta
+  group_interval: 5m     # Intervalo entre alertas do mesmo grupo
+  repeat_interval: 4h    # Repetir alerta a cada 4h se não resolver
+
+  # Rota padrão (email para equipe)
+  receiver: 'team-email'
+
+  # Rotas específicas por severidade
+  routes:
+    # Alertas CRÍTICOS → Slack + PagerDuty + Email
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      group_interval: 2m
+      repeat_interval: 1h  # Repetir a cada 1h
+
+    # Alertas WARNING → Slack + Email
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 30s
+      group_interval: 10m
+      repeat_interval: 12h
+
+    # Alertas de disco → Canal específico
+    - match:
+        component: disk
+      receiver: 'infra-team'
+
+    # Alertas de jobs → Canal específico
+    - match:
+        component: jobs
+      receiver: 'dev-team'
+
+# ========================================
+# Receivers (Canais de Notificação)
+# ========================================
+receivers:
+  # Email padrão para equipe
+  - name: 'team-email'
+    email_configs:
+      - to: 'team@exemplo.com'
+        headers:
+          Subject: '[{{ .GroupLabels.severity | toUpper }}] {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>{{ .GroupLabels.alertname }}</h2>
+          <b>Severidade:</b> {{ .GroupLabels.severity }}<br>
+          <b>Descrição:</b> {{ range .Alerts }}{{ .Annotations.description }}<br>{{ end }}
+          <b>Runbook:</b> {{ range .Alerts }}{{ .Annotations.runbook }}<br>{{ end }}
+
+  # Alertas CRÍTICOS
+  - name: 'critical-alerts'
+    # Slack
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'  # Configurar via secret
+        channel: '#alerts-critical'
+        username: 'AlertManager'
+        icon_emoji: ':rotating_light:'
+        title: ':fire: CRITICAL: {{ .GroupLabels.alertname }}'
+        text: |
+          *Severidade:* {{ .GroupLabels.severity }}
+          *Componente:* {{ .GroupLabels.component }}
+          {{ range .Alerts }}
+          *Descrição:* {{ .Annotations.description }}
+          *Runbook:* {{ .Annotations.runbook }}
+          {{ end }}
+        send_resolved: true
+
+    # PagerDuty
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'  # Configurar via secret
+        description: '{{ .GroupLabels.alertname }}: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        details:
+          severity: '{{ .GroupLabels.severity }}'
+          component: '{{ .GroupLabels.component }}'
+          description: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+          runbook: '{{ range .Alerts }}{{ .Annotations.runbook }}{{ end }}'
+
+    # Email
+    email_configs:
+      - to: 'oncall@exemplo.com,team@exemplo.com'
+        headers:
+          Subject: '[CRITICAL] {{ .GroupLabels.alertname }}'
+          Priority: 'urgent'
+
+  # Alertas WARNING
+  - name: 'warning-alerts'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#alerts-warning'
+        username: 'AlertManager'
+        icon_emoji: ':warning:'
+        title: ':warning: WARNING: {{ .GroupLabels.alertname }}'
+        text: |
+          *Componente:* {{ .GroupLabels.component }}
+          {{ range .Alerts }}
+          {{ .Annotations.description }}
+          {{ end }}
+        send_resolved: true
+
+    email_configs:
+      - to: 'team@exemplo.com'
+
+  # Equipe de Infraestrutura
+  - name: 'infra-team'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#infra'
+        username: 'AlertManager'
+        icon_emoji: ':computer:'
+        send_resolved: true
+
+    email_configs:
+      - to: 'infra@exemplo.com'
+
+  # Equipe de Desenvolvimento
+  - name: 'dev-team'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#dev-alerts'
+        username: 'AlertManager'
+        icon_emoji: ':construction:'
+        send_resolved: true
+
+    email_configs:
+      - to: 'dev@exemplo.com'
+
+# ========================================
+# Inibições (Prevent Alert Spam)
+# ========================================
+inhibit_rules:
+  # Se API está DOWN, não alertar sobre outros problemas
+  - source_match:
+      alertname: 'APIDown'
+    target_match_re:
+      alertname: '.*'
+    equal: ['instance']
+
+  # Se Redis está down, não alertar sobre health check
+  - source_match:
+      alertname: 'RedisConnectionLost'
+    target_match:
+      alertname: 'HealthCheckUnhealthy'
+    equal: ['instance']
+
+  # Se disco crítico, não alertar sobre warning de disco
+  - source_match:
+      alertname: 'DiskSpaceCritical'
+    target_match:
+      alertname: 'DiskSpaceWarning'
+    equal: ['instance']

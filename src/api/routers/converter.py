@@ -5,11 +5,13 @@ Rotas para conversão de documentos.
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from fastapi.responses import JSONResponse
 import json
+from urllib.parse import urlparse
 from src.api.models import ConversionRequest, ConversionResponse, StatusResponse
 from src.api.services.conversion_service import create_conversion_job, get_job_status, get_job_details
 from src.utils.logging_config import setup_logger
 from src.api.dependencies import verify_api_key, rate_limiter
 from src.api.services.url_fetcher import fetch_and_save_url
+from src.config import MAX_FILE_SIZE, SUPPORTED_FORMATS
 import os
 
 # Configurar logger
@@ -20,6 +22,48 @@ router = APIRouter(
     tags=["convert"],
     dependencies=[Depends(verify_api_key), Depends(rate_limiter)]
 )
+
+
+def validate_url(url: str) -> None:
+    """
+    Valida URL para prevenir ataques.
+
+    Rejeita:
+    - Esquemas maliciosos (file://, javascript:, data:, etc.)
+    - URLs muito longas
+    - URLs sem hostname válido
+
+    Raises:
+        HTTPException: Se a URL for inválida ou maliciosa
+    """
+    # Validar comprimento
+    if len(url) > 2048:
+        raise HTTPException(status_code=400, detail="URL muito longa (máximo 2048 caracteres)")
+
+    # Parse da URL
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        raise HTTPException(status_code=400, detail="URL malformada")
+
+    # Validar esquema (apenas http e https)
+    if parsed.scheme not in ['http', 'https']:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Esquema de URL não permitido: {parsed.scheme}. Use http:// ou https://"
+        )
+
+    # Validar hostname
+    if not parsed.netloc:
+        raise HTTPException(status_code=400, detail="URL sem hostname válido")
+
+    # Prevenir localhost/IPs privadas (opcional, mas recomendado em produção)
+    blocked_hosts = ['localhost', '127.0.0.1', '0.0.0.0', '::1']
+    if parsed.netloc.lower() in blocked_hosts or parsed.netloc.startswith('192.168.') or parsed.netloc.startswith('10.'):
+        raise HTTPException(
+            status_code=400,
+            detail="URLs para localhost ou IPs privadas não são permitidas"
+        )
 
 @router.post("/", response_model=ConversionResponse)
 async def convert_document(
@@ -42,12 +86,23 @@ async def convert_document(
 
     # Obter conteúdo e nome do arquivo
     if url:
+        # Validar URL antes de processar
+        validate_url(url)
+
+        temp_path = None
         try:
             temp_path = await fetch_and_save_url(url)
             file_content = open(temp_path, 'rb').read()
             filename = os.path.basename(temp_path)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Falha ao obter URL: {str(e)}")
+        finally:
+            # Limpar arquivo temporário
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.unlink(temp_path)
+                except Exception as e:
+                    logger.warning(f"Não foi possível deletar arquivo temporário {temp_path}: {str(e)}")
     else:
         if not file.filename:
             raise HTTPException(status_code=400, detail="Arquivo não fornecido")
@@ -56,19 +111,19 @@ async def convert_document(
     
     # Verificar extensão do arquivo
     file_ext = filename.split('.')[-1].lower()
-    supported_exts = ['pdf', 'docx', 'html', 'txt', 'md', 'xml', 'epub', 'json', 'jpg', 'jpeg', 'png', 'tiff', 'tif']
-    
-    if file_ext not in supported_exts:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Formato de arquivo não suportado. Formatos suportados: {', '.join(supported_exts)}"
-        )
-    
-    # Verificar tamanho do arquivo (max 50MB)
-    if len(file_content) > 50 * 1024 * 1024:
+
+    if file_ext not in SUPPORTED_FORMATS:
         raise HTTPException(
             status_code=400,
-            detail="Tamanho máximo de arquivo excedido (50MB)"
+            detail=f"Formato de arquivo não suportado. Formatos suportados: {', '.join(SUPPORTED_FORMATS)}"
+        )
+
+    # Verificar tamanho do arquivo
+    if len(file_content) > MAX_FILE_SIZE:
+        max_mb = MAX_FILE_SIZE / (1024 * 1024)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Tamanho máximo de arquivo excedido ({max_mb:.0f}MB)"
         )
     
     # Processar parâmetros

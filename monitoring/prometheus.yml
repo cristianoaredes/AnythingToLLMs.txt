@@ -1,0 +1,62 @@
+global:
+  scrape_interval: 15s      # Coletar métricas a cada 15s
+  evaluation_interval: 15s  # Avaliar regras a cada 15s
+  external_labels:
+    cluster: 'llms-txt-production'
+    environment: 'production'
+
+# ========================================
+# Regras de Alerta
+# ========================================
+rule_files:
+  - 'rules.yml'
+
+# ========================================
+# AlertManager
+# ========================================
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# ========================================
+# Scrape Configs (Coleta de Métricas)
+# ========================================
+scrape_configs:
+  # API Principal
+  - job_name: 'llms-txt-api'
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets:
+          - 'host.docker.internal:8000'  # API rodando no host
+          # ou se API em container: - 'api:8000'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'llms-txt-api'
+
+  # Prometheus (self-monitoring)
+  - job_name: 'prometheus'
+    static_configs:
+      - targets:
+          - 'localhost:9090'
+
+  # AlertManager
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets:
+          - 'alertmanager:9093'
+
+  # Node Exporter (métricas do sistema)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets:
+          - 'node-exporter:9100'
+
+  # Redis (se tiver redis_exporter)
+  - job_name: 'redis'
+    static_configs:
+      - targets:
+          - 'redis-exporter:9121'  # Adicionar redis_exporter se necessário
