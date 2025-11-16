@@ -2,14 +2,19 @@ version: '3.8'
 
 services:
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: llms-txt-api:latest
+    container_name: llms-api
     ports:
-      - "8001:8000"
+      - "${SERVER_PORT:-8000}:8000"
+    env_file:
+      - .env
     environment:
-      - LLMS_LOG_LEVEL=INFO
-      - LOG_FORMAT=json
-      - ENVIRONMENT=production
+      # Sobrescrever valores do .env se necessário
       - REDIS_URL=redis://redis:6379/0
+      - UPLOAD_DIR=/app/temp/uploads
     depends_on:
       redis:
         condition: service_healthy
@@ -19,14 +24,17 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 40s  # Playwright install leva tempo
     volumes:
       - ./temp:/app/temp  # Persistir uploads temporários
+    networks:
+      - llms-network
 
   redis:
     image: redis:7-alpine
+    container_name: llms-redis
     # Ativar persistência com AOF (Append Only File)
-    command: redis-server --appendonly yes --appendfsync everysec
+    command: redis-server --appendonly yes --appendfsync everysec --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     restart: unless-stopped
@@ -45,7 +53,13 @@ services:
         reservations:
           cpus: '0.25'
           memory: 256M
+    networks:
+      - llms-network
 
 volumes:
   redis_data:
     driver: local
+
+networks:
+  llms-network:
+    driver: bridge
