@@ -1,0 +1,88 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: llms-api-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: llms-api
+
+  # Limites de réplicas
+  minReplicas: 3
+  maxReplicas: 20
+
+  # Métricas para auto-scaling
+  metrics:
+  # CPU - escalar quando CPU > 70%
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+
+  # Memory - escalar quando memória > 80%
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+  # Comportamento de scaling
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300  # 5 min antes de reduzir
+      policies:
+      - type: Percent
+        value: 50    # Reduzir até 50% por vez
+        periodSeconds: 60
+      - type: Pods
+        value: 2     # Ou reduzir 2 pods por vez (o que for menor)
+        periodSeconds: 60
+      selectPolicy: Min  # Usar a política mais conservadora
+
+    scaleUp:
+      stabilizationWindowSeconds: 60   # 1 min antes de aumentar
+      policies:
+      - type: Percent
+        value: 100   # Dobrar número de pods
+        periodSeconds: 30
+      - type: Pods
+        value: 4     # Ou adicionar 4 pods (o que for maior)
+        periodSeconds: 30
+      selectPolicy: Max  # Usar a política mais agressiva
+
+---
+# Opcional: Usar métricas customizadas do Prometheus
+# Requer Prometheus Adapter instalado
+# apiVersion: autoscaling/v2
+# kind: HorizontalPodAutoscaler
+# metadata:
+#   name: llms-api-hpa-custom
+# spec:
+#   scaleTargetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: llms-api
+#   minReplicas: 3
+#   maxReplicas: 20
+#   metrics:
+#   # Escalar baseado em requisições por segundo
+#   - type: Pods
+#     pods:
+#       metric:
+#         name: http_requests_per_second
+#       target:
+#         type: AverageValue
+#         averageValue: "100"  # 100 req/s por pod
+#
+#   # Escalar baseado em jobs em processamento
+#   - type: Pods
+#     pods:
+#       metric:
+#         name: conversion_jobs_in_progress
+#       target:
+#         type: AverageValue
+#         averageValue: "5"  # 5 jobs por pod
